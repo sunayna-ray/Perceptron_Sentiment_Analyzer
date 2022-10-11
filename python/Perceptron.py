@@ -3,6 +3,8 @@ import getopt
 import os
 import math
 import operator
+import numpy as np
+import random as rand
 
 class Perceptron:
   class TrainSplit:
@@ -24,6 +26,12 @@ class Perceptron:
   def __init__(self):
     """Perceptron initialization"""
     self.numFolds = 10
+    self.vocab = set()
+    self.vocabSize = 0
+    self.training = []
+    self.weights = None
+    self.bias = 0
+    self.idxZip = dict()
 
   #############################################################################
   # TODO TODO TODO TODO TODO 
@@ -36,8 +44,18 @@ class Perceptron:
 
 
     # Write code here
+    phiN = np.zeros(self.vocabSize)
+    for word in words:
+        if word in self.vocab:
+            idex = self.idxZip[word]
+            phiN[idex] = phiN[idex] + 1
 
-    return 'pos'
+    out = self.bias + np.dot(self.weights,phiN)
+
+    if out>=0:
+        return 'pos'
+    else:
+        return 'neg'
   
 
   def addExample(self, klass, words):
@@ -51,8 +69,12 @@ class Perceptron:
     """
 
     # Write code here
+    phiN = np.zeros(self.vocabSize)
+    for word in words:
+      indx = self.idxZip[word]
+      phiN[indx] = phiN[indx]+1
 
-    pass
+    self.training.append((phiN,klass))
   
   def train(self, split, iterations):
       """
@@ -61,9 +83,43 @@ class Perceptron:
       * TODO 
       * use weight averages instead of final iteration weights
       """
+      
       for example in split.train:
           words = example.words
-          self.addExample(example.klass, words)
+          for w in set(words):
+            self.vocab.add(w)
+
+      self.vocabSize = len(self.vocab)
+      # set index for each word for embedding
+      self.idxZip = {word:idx for idx,word in enumerate(self.vocab)}
+
+      for example in split.train:
+          self.addExample(example.klass, example.words)
+
+      wtAvg = np.zeros(self.vocabSize)
+      biasAvg = 0
+
+      wtCurr = np.zeros(self.vocabSize)
+      biasCurr = 0
+
+      vectCount = 1
+
+      for iter in range(iterations):
+        rand.shuffle(self.training)
+        for phiN,y in self.training:
+            if(y=='neg'): y=-1
+            else: y = 1
+            out = (biasCurr + np.dot(wtCurr,phiN))*y
+
+            if out<=0:
+              wtCurr += y*phiN
+              wtAvg += vectCount * y * phiN
+              biasCurr += y
+              biasAvg += vectCount * y
+            vectCount = vectCount+1
+
+      self.bias = biasCurr-(biasAvg/vectCount) 
+      self.weights= wtCurr - (wtAvg/vectCount)
       
 
   # END TODO (Modify code beyond here with caution)
@@ -189,3 +245,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+# python Perceptron.py "../data/imdb1" <iteration_count>
